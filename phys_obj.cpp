@@ -41,7 +41,6 @@ physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollis
     if (!shape)
         shape = new btBoxShape(btVector3(1, 1, 1));
     std::cout << "Instantiated new physObj\n";
-    shape = new btBoxShape(btVector3(1, 1, 1));
     motionstate = new btDefaultMotionState(btTransform(btQuaternion(0, 0, 0, 1), pos));
     btVector3 inertia(0, 0, 0);
     shape->calculateLocalInertia(mass, inertia);

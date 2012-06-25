@@ -49,7 +49,9 @@ game::game()
     running = true;
 
     gWorld.addObject(new physObj(1, btVector3(0, 0, 0), 0, new model("C:/Users/Owner/Documents/cube2.bsm")));
-    gWorld.addObject(new physObj(0, btVector3(0, -5, 0), new btStaticPlaneShape(btVector3(0, 1, 0), 100), new model("C:/Users/Owner/Documents/terrain.bsm")));
+    gWorld.addObject(new physObj(1, btVector3(1, 5, 0), convexHullFromFile("C:/Users/Owner/Documents/bob.bsm"), new model("C:/Users/Owner/Documents/bob.bsm")));
+    btBvhTriangleMeshShape *msh = new btBvhTriangleMeshShape(collisionMeshFromFile("C:/Users/Owner/Documents/arena_yz.bsm"), true);
+    gWorld.addObject(new physObj(0, btVector3(0, -5, 0), msh, new model("C:/Users/Owner/Documents/arena_yz.bsm")));
     gWorld.objects[0]->body->applyForce(btVector3(0, 200, 0), btVector3(1, 1, 0.8));
 }
 
@@ -115,7 +117,16 @@ void game::update()
     lastmousey = mousey;
     glfwGetMousePos(&mousex, &mousey);
 
-    if (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_ACTIVE))
+    if (mousex > 0 && mousex < width && mousey > 0 && mousey < height && keys.held.MouseL)
+    {
+         captureMouse = true;
+         glfwSetMousePos(width / 2, height / 2);
+         mousex = width / 2;
+         mousey = height / 2;
+    }
+
+
+    if (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_ACTIVE) && captureMouse)
     {
         glfwDisable(GLFW_MOUSE_CURSOR);
         camera.pitch -= (mousey - height / 2) * 0.01;
@@ -126,6 +137,7 @@ void game::update()
     else
     {
         glfwEnable(GLFW_MOUSE_CURSOR);
+        captureMouse = false;
     }
 
     camera.orientationFromAngles();

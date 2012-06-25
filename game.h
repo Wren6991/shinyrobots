@@ -13,7 +13,7 @@ class game
 {
     int width, height;
     int frame;
-    bool running;
+    bool running, captureMouse;
 
     int lastmousex, lastmousey;
     int mousex, mousey;

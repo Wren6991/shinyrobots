@@ -4,11 +4,12 @@
 #include <GL/glew.h>
 #include "model.h"
 #include "util.h"
-extern "C" {
+//extern "C" {
 #include "bsm.h"
-}
+//}
 
 #define BUFFER_OFFSET(i) (reinterpret_cast<void*>(i))
+
 
 void model::render()
 {
@@ -29,9 +30,13 @@ model::model(std::string filename)
 {
     assert(sizeof(vertex) == sizeof(bsm_position_t) + sizeof(bsm_normal_t) + sizeof(bsm_texcoord_t));
     std::fstream file(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!file.is_open())
+        std::cerr << "Cannot open file " << filename << std::endl;
     file.seekg(0, std::ios::end);
     int length = file.tellg();
     file.seekg(0, std::ios::beg);
+
+    std::cout << length << " bytes\n";
 
     char *buffer = new char[length];
     file.read(buffer, length);
