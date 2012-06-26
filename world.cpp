@@ -27,7 +27,9 @@ world::~world()
 void world::addObject(physObj* object)
 {
     objects.push_back(object);
-    btWorld->addRigidBody(object->body);
+    btRigidBody *body = object->body;
+    btWorld->getBroadphase();
+    btWorld->addRigidBody(body);
 }
 
 void world::render()

@@ -1,5 +1,8 @@
 #include "game.h"
 #include <iostream>
+#include <sstream>
+#include <fstream>
+#include <json/json.h>
 
 #define RAD_TO_DEGREES (180.0 / 3.14159265358979323846)
 
@@ -16,14 +19,17 @@ void game::camera::orientationFromAngles()
     up = btVector3(qup.getX(), qup.getY(), qup.getZ());
 }
 
-game::game()
+game::game(std::string path_)
 {
+    gWorld = 0;
+    path = path_;
     for(int i = 0; i < sizeof(keys); i++)
         ((char*)&keys)[i] = 0;
     currentinstance = this;         //so the key callback can access the key state... :(
     camera.position = btVector3(0, 0, 10);
     camera.pitch = 0;
     camera.yaw = 0;
+    camera.orientationFromAngles();
 
     glfwInit();
     if( !glfwOpenWindow(1024, 768, 0, 0, 0, 0, 0, 0, GLFW_WINDOW))
@@ -47,12 +53,17 @@ game::game()
     }
 
     running = true;
+    captureMouse = false;
 
-    gWorld.addObject(new physObj(1, btVector3(0, 0, 0), 0, new model("C:/Users/Owner/Documents/cube2.bsm")));
-    gWorld.addObject(new physObj(1, btVector3(1, 5, 0), convexHullFromFile("C:/Users/Owner/Documents/bob.bsm"), new model("C:/Users/Owner/Documents/bob.bsm")));
+    /*gWorld->addObject(new physObj(1, btVector3(0, 0, 0), 0, new model("C:/Users/Owner/Documents/cube2.bsm")));
+    gWorld->addObject(new physObj(1, btVector3(1, 5, 0), convexHullFromFile("C:/Users/Owner/Documents/bob.bsm"), new model("C:/Users/Owner/Documents/bob.bsm")));
     btBvhTriangleMeshShape *msh = new btBvhTriangleMeshShape(collisionMeshFromFile("C:/Users/Owner/Documents/arena_yz.bsm"), true);
-    gWorld.addObject(new physObj(0, btVector3(0, -5, 0), msh, new model("C:/Users/Owner/Documents/arena_yz.bsm")));
-    gWorld.objects[0]->body->applyForce(btVector3(0, 200, 0), btVector3(1, 1, 0.8));
+    gWorld->addObject(new physObj(0, btVector3(0, -5, 0), msh, new model("C:/Users/Owner/Documents/arena_yz.bsm")));
+    gWorld->objects[0]->body->applyForce(btVector3(0, 200, 0), btVector3(1, 1, 0.8));*/
+    loadLevel("arena");
+
+
+
 }
 
 void GLFWCALL game::dummy_keyCallback(int character, int action)         //we can't pass a non-static member function as a callback, but a static function can't access the data - this should do for now.
@@ -161,10 +172,10 @@ void game::update()
 
     if (keys.held.space)
     {
-        gWorld.addObject(new physObj(1, camera.position, 0, new model("C:/Users/Owner/Documents/cube.bsm")));
+        gWorld->addObject(new physObj(1, camera.position, 0, new model("C:/Users/Owner/Documents/cube.bsm")));
     }
 
-    gWorld.btWorld->stepSimulation(1/60.f, 10);
+    gWorld->btWorld->stepSimulation(1/60.f, 10);
 
     running = glfwGetWindowParam(GLFW_OPENED);
 }
@@ -210,13 +221,108 @@ void game::render()
 
     glEnable(GL_CULL_FACE);
 
-    gWorld.render();
+    gWorld->render();
     glfwSwapBuffers();
 }
 
 game::~game()
 {
     glfwTerminate();
+}
+
+void game::loadLevel(std::string level)
+{
+    if (gWorld)
+        delete gWorld;
+    gWorld = new world();
+    std::stringstream ss;
+    ss << path << "levels/" << level << "/info.json";
+    std::string infopath = ss.str();
+    std::fstream file(infopath.c_str(), std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        std::cout << "Error: could not open file " << infopath << "\n";
+        return;
+    }
+    file.seekg(0, std::ios::end);
+    int length = file.tellg();
+    file.seekg(0, std::ios::beg);
+    char *buffer = new char[length + 1];
+    file.read(buffer, length);
+
+    Json::Reader reader;
+    Json::Value root;
+    bool parsingSuccessful = reader.parse(buffer, root);
+    if (!parsingSuccessful)
+    {
+        std::cout << "Parsing error(s):\n" << reader.getFormatedErrorMessages();
+        return;
+    }
+    std::cout << root["name"].asString() << "\n" << root["description"].asString() << "\n";
+    if (root["staticmeshes"].isArray())
+    {
+        for (int i = 0; i < root["staticmeshes"].size(); i++)
+        {
+            Json::Value obj = root["staticmeshes"][i];
+            model *mdl = 0;
+            btBvhTriangleMeshShape *mesh = 0;
+            if (!obj["mesh"].isNull())
+            {
+                std::stringstream ss;
+                ss << path << "levels/" << level << "/" << obj["mesh"].asString();
+                mdl = new model(ss.str())  ;
+                mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
+            }
+            Json::Value loc = obj["location"];
+            btVector3 pos(0, 0, 0);
+            if (loc.isArray())
+                pos = btVector3(loc[0.].asDouble(), loc[1.].asDouble(), loc[2u].asDouble());
+            gWorld->addObject(new physObj(0, pos, mesh, mdl));
+        }
+    }
+    if (root["dynamics"].isArray())
+    {
+        for (int i = 0; i < root["dynamics"].size(); i++)
+        {
+            Json::Value obj = root["dynamics"][i];
+            model *mdl = 0;
+            btCollisionShape *shape = 0;
+            if (!obj["view"].isNull())
+            {
+                std::stringstream ss;
+                ss << path << "levels/" << level << "/" << obj["view"].asString();
+                mdl = new model(ss.str());
+            }
+            if (!obj["hull"].isNull())
+            {
+                std::stringstream ss;
+                ss << path << "levels/" << level << "/" << obj["hull"].asString();
+                shape = convexHullFromFile(ss.str());
+            }
+            else if (obj["shape"].isObject())
+            {
+                std::string type = obj["shape"]["type"].asString();
+                if (type == "sphere")
+                {
+                    double radius = obj["shape"]["radius"].asDouble();
+                    shape = new btSphereShape(radius == 0? 1 : radius);
+                }
+                else if (type == "box")
+                {
+                    Json::Value extent = obj["shape"]["extent"];
+                    if (extent.isArray())
+                        shape = new btBoxShape(btVector3(extent[0.].asDouble(), extent[1].asDouble(), extent[2].asDouble()));
+                    else
+                        shape = new btBoxShape(btVector3(1, 1, 1));
+                }
+            }
+            Json::Value loc = obj["location"];
+            btVector3 pos(0, 0, 0);
+            if (loc.isArray())
+                pos = btVector3(loc[0.].asDouble(), loc[1.].asDouble(), loc[2u].asDouble());
+            gWorld->addObject(new physObj(obj["mass"].asDouble(), pos, shape, mdl));
+        }
+    }
 }
 
 void game::mainloop()

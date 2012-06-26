@@ -35,9 +35,10 @@ void physObj::render()
     glPopMatrix();
 }
 
-physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape, model *mdl_)
+physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape_, model *mdl_)
 {
     mdl = mdl_;
+    shape = shape_;
     if (!shape)
         shape = new btBoxShape(btVector3(1, 1, 1));
     std::cout << "Instantiated new physObj\n";

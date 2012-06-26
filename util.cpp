@@ -2,9 +2,9 @@
 
 #include <iostream>
 #include <fstream>
-//extern "C" {
+extern "C" {
 #include "bsm.h"
-//}
+}
 
 void strideCopy(char *dest, char *src, int sizeInBytes, int n, int stride_dest, int stride_src)         // you'll have to allocate your own memory before you pass the pointers in!
 {
@@ -20,21 +20,30 @@ void strideCopy(char *dest, char *src, int sizeInBytes, int n, int stride_dest, 
     }
 }
 
-btTriangleMesh* collisionMeshFromFile(std::string filename)
+charbuffer getFileContents(std::string filename)
 {
-    std::cout << "Loading mesh: " << filename << "\n";
     std::fstream file(filename.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open())
-        std::cerr << "Could not open file " << filename << "for reading.\n";
-
+    {
+        std::cerr << "Could not open file " << filename << " for reading.\n";
+    }
     file.seekg(0, std::ios::end);
     int length = file.tellg();
     file.seekg(0, std::ios::beg);
-
-    std::cout << length << " bytes\n";
-
-    char buffer[length];
+    char *buffer = new char[length];
     file.read(buffer, length);
+    charbuffer result;
+    result.buffer = buffer;
+    result.length = length;
+    return result;
+}
+
+btTriangleMesh* collisionMeshFromFile(std::string filename)
+{
+    charbuffer cb = getFileContents(filename);
+    char *buffer = cb.buffer;
+    int length = cb.length;
+
     bsm_header_v1_t *header = new bsm_header_v1_t;
     if (!bsm_read_header_v1((uint8_t*)buffer, length, header))
         std::cerr << "Error: " << filename << " is not a binary static mesh.";
@@ -56,10 +65,10 @@ btTriangleMesh* collisionMeshFromFile(std::string filename)
     }
 
     std::cout << "Cleaning up:\n";
-    //delete posbuffer;
-    //delete tribuffer;
-    //delete header;
-    //delete buffer;
+    delete posbuffer;
+    delete tribuffer;
+    delete header;
+    delete buffer;
     std::cout << "all cleaned up\n";
 
     return mesh;
@@ -77,7 +86,7 @@ btConvexHullShape* convexHullFromFile(std::string filename)
 
     std::cout << length << " bytes\n";
 
-    char buffer[length];
+    char *buffer = new char[length + 1];
     file.read(buffer, length);
     bsm_header_v1_t *header = new bsm_header_v1_t;
     if (!bsm_read_header_v1((uint8_t*)buffer, length, header))

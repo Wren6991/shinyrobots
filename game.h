@@ -18,7 +18,9 @@ class game
     int lastmousex, lastmousey;
     int mousex, mousey;
 
-    world gWorld;
+    world *gWorld;
+
+    std::string path;
 
     public: struct camera
     {
@@ -59,7 +61,8 @@ class game
 
     public:
 
-    game();
+    game(std::string path_ = "./");
+    void loadLevel(std::string level = "test");
     void update();
     void render();
     void mainloop();

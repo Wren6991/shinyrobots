@@ -4,9 +4,9 @@
 #include <GL/glew.h>
 #include "model.h"
 #include "util.h"
-//extern "C" {
+extern "C" {
 #include "bsm.h"
-//}
+}
 
 #define BUFFER_OFFSET(i) (reinterpret_cast<void*>(i))
 
@@ -38,7 +38,7 @@ model::model(std::string filename)
 
     std::cout << length << " bytes\n";
 
-    char *buffer = new char[length];
+    char *buffer = new char[length + 1];
     file.read(buffer, length);
 
     bsm_header_v1_t *header = new bsm_header_v1_t;

@@ -23,7 +23,7 @@ struct physObj
     void render();
     void addShape(btCollisionShape*);
 
-    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0);
+    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0);
 };
 
 #endif // PHYS_OBJ_H_INCLUDED
