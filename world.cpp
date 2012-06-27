@@ -22,14 +22,22 @@ world::~world()
     {
         delete *iter;
     }
+    for (std::vector<btTypedConstraint*>::iterator iter = constraints.begin(); iter != constraints.end(); ++iter)
+    {
+        delete *iter;
+    }
 }
 
-void world::addObject(physObj* object)
+void world::addObject(physObj *object)
 {
     objects.push_back(object);
-    btRigidBody *body = object->body;
-    btWorld->getBroadphase();
-    btWorld->addRigidBody(body);
+    btWorld->addRigidBody(object->body);
+}
+
+void world::addConstraint(btTypedConstraint *constraint)
+{
+    constraints.push_back(constraint);
+    btWorld->addConstraint(constraint, false);
 }
 
 void world::render()

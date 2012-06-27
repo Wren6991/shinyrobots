@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 //#define GLFW_DLL
 #include <GL/glfw.h>
+#include <json/json.h>
 #include "phys_obj.h"
 #include "world.h"
 #include "model.h"
@@ -66,6 +67,9 @@ class game
     void update();
     void render();
     void mainloop();
+    physObj* staticFromJson(Json::Value obj, std::string currentpath);
+    physObj* dynamicFromJson(Json::Value obj, std::string currentpath);
+
     ~game();
 };
 

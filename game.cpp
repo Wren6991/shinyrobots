@@ -128,7 +128,7 @@ void game::update()
     lastmousey = mousey;
     glfwGetMousePos(&mousex, &mousey);
 
-    if (mousex > 0 && mousex < width && mousey > 0 && mousey < height && keys.held.MouseL)
+    if (!captureMouse && mousex > 0 && mousex < width && mousey > 0 && mousey < height && keys.held.MouseL)
     {
          captureMouse = true;
          glfwSetMousePos(width / 2, height / 2);
@@ -175,7 +175,8 @@ void game::update()
         gWorld->addObject(new physObj(1, camera.position, 0, new model("C:/Users/Owner/Documents/cube.bsm")));
     }
 
-    gWorld->btWorld->stepSimulation(1/60.f, 10);
+    if (!keys.held.MouseR)
+        gWorld->btWorld->stepSimulation(1/60.f, 10);
 
     running = glfwGetWindowParam(GLFW_OPENED);
 }
@@ -200,8 +201,25 @@ void game::render()
 
     camera.orientation.setEuler(camera.yaw, camera.pitch, 0);
     btQuaternion invrotate = camera.orientation.inverse();
+    // Draw HUD in screen space:
+    glPushMatrix();
+    glTranslatef(-1.8, -1.8, -2);
     glRotatef(invrotate.getAngle() * RAD_TO_DEGREES, invrotate.getAxis().getX(), invrotate.getAxis().getY(), invrotate.getAxis().getZ());
+    glBegin(GL_LINES);
+    glColor3f(1.f, 0.f, 0.f);
+    glVertex3f(0.f, 0.f, 0.f);
+    glVertex3f(0.1f, 0.f, 0.f);
+    glColor3f(0.f, 1.f, 0.f);
+    glVertex3f(0.f, 0.f, 0.f);
+    glVertex3f(0.f, 0.1f, 0.f);
+    glColor3f(0.f, 0.f, 1.f);
+    glVertex3f(0.f, 0.f, 0.f);
+    glVertex3f(0.f, 0.f, 0.1f);
+    glColor3f(1.f, 1.f, 1.f);
+    glEnd();
+    glPopMatrix();
 
+    glRotatef(invrotate.getAngle() * RAD_TO_DEGREES, invrotate.getAxis().getX(), invrotate.getAxis().getY(), invrotate.getAxis().getZ());
     glTranslatef(-camera.position.getX(), -camera.position.getY(), -camera.position.getZ());
 
     GLfloat mat_specular[] = { 1.0, 1.0, 1.0, 1.0 };
@@ -230,13 +248,31 @@ game::~game()
     glfwTerminate();
 }
 
+btVector3 jsonVector(Json::Value v, btVector3 defaultvec = btVector3(0, 0, 0))
+{
+    if (!v.isNull())
+        return btVector3(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble());
+    else
+        return defaultvec;
+}
+
+btQuaternion jsonQuaternion(Json::Value v, btQuaternion defaultquat = btQuaternion(0, 0, 0, 1))
+{
+    if (!v.isNull())
+        return btQuaternion(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble(), v[3].asDouble());
+    else
+        return defaultquat;
+}
+
 void game::loadLevel(std::string level)
 {
     if (gWorld)
         delete gWorld;
     gWorld = new world();
     std::stringstream ss;
-    ss << path << "levels/" << level << "/info.json";
+    ss << path << "levels/" << level << "/";
+    std::string levelpath = ss.str();
+    ss << "info.json";
     std::string infopath = ss.str();
     std::fstream file(infopath.c_str(), std::ios::in | std::ios::binary);
     if (!file.is_open())
@@ -244,6 +280,7 @@ void game::loadLevel(std::string level)
         std::cout << "Error: could not open file " << infopath << "\n";
         return;
     }
+
     file.seekg(0, std::ios::end);
     int length = file.tellg();
     file.seekg(0, std::ios::beg);
@@ -263,66 +300,110 @@ void game::loadLevel(std::string level)
     {
         for (int i = 0; i < root["staticmeshes"].size(); i++)
         {
-            Json::Value obj = root["staticmeshes"][i];
-            model *mdl = 0;
-            btBvhTriangleMeshShape *mesh = 0;
-            if (!obj["mesh"].isNull())
-            {
-                std::stringstream ss;
-                ss << path << "levels/" << level << "/" << obj["mesh"].asString();
-                mdl = new model(ss.str())  ;
-                mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
-            }
-            Json::Value loc = obj["location"];
-            btVector3 pos(0, 0, 0);
-            if (loc.isArray())
-                pos = btVector3(loc[0.].asDouble(), loc[1.].asDouble(), loc[2u].asDouble());
-            gWorld->addObject(new physObj(0, pos, mesh, mdl));
+            gWorld->addObject(staticFromJson(root["staticmeshes"][i], levelpath));
+            if (!root["staticmeshes"][i]["tag"].isNull())
+                gWorld->tags[root["staticmeshes"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
         }
+
     }
     if (root["dynamics"].isArray())
     {
         for (int i = 0; i < root["dynamics"].size(); i++)
         {
-            Json::Value obj = root["dynamics"][i];
-            model *mdl = 0;
-            btCollisionShape *shape = 0;
-            if (!obj["view"].isNull())
+            gWorld->addObject(dynamicFromJson(root["dynamics"][i], levelpath));
+            if (!root["dynamics"][i]["tag"].isNull())
+                gWorld->tags[root["dynamics"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+        }
+
+    }
+    if (root["constraints"].isArray())
+    {
+        for (int i = 0; i < root["constraints"].size(); i++)
+        {
+            Json::Value obj = root["constraints"][i];
+            if (!obj["tag"].isNull())
+                gWorld->tags[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
+            if (obj["type"].asString() == "axis")
             {
-                std::stringstream ss;
-                ss << path << "levels/" << level << "/" << obj["view"].asString();
-                mdl = new model(ss.str());
-            }
-            if (!obj["hull"].isNull())
-            {
-                std::stringstream ss;
-                ss << path << "levels/" << level << "/" << obj["hull"].asString();
-                shape = convexHullFromFile(ss.str());
-            }
-            else if (obj["shape"].isObject())
-            {
-                std::string type = obj["shape"]["type"].asString();
-                if (type == "sphere")
+                if (obj["a"].isNull() || obj["b"].isNull())
+                    continue;
+                std::cout << obj["a"].asString() << ": " << gWorld->tags[obj["a"].asString()].index << "\n";
+                std::cout << obj["b"].asString() << ": " << gWorld->tags[obj["b"].asString()].index << "\n";
+                btRigidBody *rbA = gWorld->objects[gWorld->tags[obj["a"].asString()].index]->body;
+                btRigidBody *rbB = gWorld->objects[gWorld->tags[obj["b"].asString()].index]->body;
+                btTransform transA, transB;
+                rbA->getMotionState()->getWorldTransform(transA);
+                rbB->getMotionState()->getWorldTransform(transB);
+
+                btVector3 axisa, axisb;
+                if (!obj["axis"].isNull())
                 {
-                    double radius = obj["shape"]["radius"].asDouble();
-                    shape = new btSphereShape(radius == 0? 1 : radius);
+                    axisa = jsonVector(obj["axis"], btVector3(1, 0, 0));
+                    axisb = axisa;
                 }
-                else if (type == "box")
+                else
                 {
-                    Json::Value extent = obj["shape"]["extent"];
-                    if (extent.isArray())
-                        shape = new btBoxShape(btVector3(extent[0.].asDouble(), extent[1].asDouble(), extent[2].asDouble()));
-                    else
-                        shape = new btBoxShape(btVector3(1, 1, 1));
+                    axisa = jsonVector(obj["axisa"], btVector3(1, 0, 0));
+                    axisb = jsonVector(obj["axisb"], btVector3(1, 0, 0));
                 }
+                btHingeConstraint *hinge = new btHingeConstraint(*rbA, *rbB, jsonVector(obj["pivota"]), jsonVector(obj["pivotb"]), axisa, axisb);
+                hinge->enableAngularMotor(true, 10, 10);
+                gWorld->addConstraint(hinge);
             }
-            Json::Value loc = obj["location"];
-            btVector3 pos(0, 0, 0);
-            if (loc.isArray())
-                pos = btVector3(loc[0.].asDouble(), loc[1.].asDouble(), loc[2u].asDouble());
-            gWorld->addObject(new physObj(obj["mass"].asDouble(), pos, shape, mdl));
         }
     }
+}
+
+physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
+{
+    model *mdl = 0;
+    btBvhTriangleMeshShape *mesh = 0;
+    if (!obj["mesh"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["mesh"].asString();
+        mdl = new model(ss.str())  ;
+        mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
+    }
+
+    return new physObj(0, jsonVector(obj["position"]), mesh, mdl, jsonQuaternion(obj["orientation"]));
+}
+
+physObj* game::dynamicFromJson(Json::Value obj, std::string currentpath)
+{
+    model *mdl = 0;
+    btCollisionShape *shape = 0;
+    if (!obj["view"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["view"].asString();
+        mdl = new model(ss.str());
+    }
+    if (!obj["hull"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["hull"].asString();
+        shape = convexHullFromFile(ss.str());
+    }
+    else if (obj["shape"].isObject())
+    {
+        std::string type = obj["shape"]["type"].asString();
+        if (type == "sphere")
+        {
+            double radius = obj["shape"]["radius"].asDouble();
+            shape = new btSphereShape(radius == 0? 1 : radius);
+        }
+        else if (type == "box")
+        {
+            Json::Value extent = obj["shape"]["extent"];
+            if (extent.isArray())
+                shape = new btBoxShape(btVector3(extent[0.].asDouble(), extent[1].asDouble(), extent[2].asDouble()));
+            else
+                shape = new btBoxShape(btVector3(1, 1, 1));
+        }
+    }
+
+    return new physObj(obj["mass"].asDouble(), jsonVector(obj["position"]), shape, mdl, jsonQuaternion(obj["orientation"]));
 }
 
 void game::mainloop()

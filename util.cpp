@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
 extern "C" {
 #include "bsm.h"
 }

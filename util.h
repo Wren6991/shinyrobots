@@ -3,6 +3,8 @@
 
 #include <btBulletDynamicsCommon.h>
 #include <string>
+#include <json/json.h>
+#include "phys_obj.h"
 
 struct charbuffer
 {
@@ -14,7 +16,6 @@ void strideCopy(char *dest, char *src, int sizeInBytes, int n, int stride_dest =
 charbuffer getFileContents();
 btTriangleMesh* collisionMeshFromFile(std::string filename);
 btConvexHullShape* convexHullFromFile(std::string filename);
-
 
 
 #endif // UTIL_H_INCLUDED
