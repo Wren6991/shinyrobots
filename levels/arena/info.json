@@ -1,0 +1,20 @@
+{
+ 	"name": "Arena test",
+	"description": "Testing the arena.",
+	"staticmeshes":
+	[
+		{"mesh": "arena_yz.bsm", "position": [0, 0, 0]}
+	],
+	"dynamics":
+	[
+		{"tag": "lwheel", "view": "wheel.bsm", "hull": "wheel.bsm", "mass": 1, "position": [0, 0.8, 0], "orientation": [0, 1, 0, 0]},
+		{"tag": "rwheel", "view": "wheel.bsm", "hull": "wheel.bsm", "mass": 1, "position": [1.6, 0.8, 0], "orientation": [0, 0, 0, 1]},
+		{"tag": "slbody", "view": "slopebody.bsm", "hull": "slopebody.bsm", "mass": 2, "position": [0.8, 1, 0]},
+		{"view": "canon.bsm", "hull": "canon.bsm", "mass": 1, "position": [0, 5, 0]}
+	],
+	"constraints":
+	[
+		{"tag": "motora", "type": "axis", "a": "lwheel", "b": "slbody", "pivota": [0, 0, 0], "pivotb": [-0.8, -0.2, 0.5], "axisa": [-1, 0, 0], "axisb": [1, 0, 0]},
+		{"tag": "motorb", "type": "axis", "a": "rwheel", "b": "slbody", "pivota": [0, 0, 0], "pivotb": [ 0.8, -0.2, 0.5]}
+	]
+}

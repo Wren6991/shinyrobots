@@ -4,6 +4,7 @@
 #include <btBulletDynamicsCommon.h>
 #include <map>
 #include <vector>
+#include <memory>
 #include "phys_obj.h"
 
 struct tag
@@ -19,11 +20,19 @@ struct tag
     tag(e_type type_, int index_) {type = type_; index = index_;}
 };
 
+struct tag_dict
+{
+    std::shared_ptr <tag_dict> parent;
+    std::map<std::string, tag> tags;
+    tag& operator[](std::string);
+};
+
 struct world
 {
     std::vector<physObj*> objects;
     std::vector<btTypedConstraint*> constraints;
-    std::map<std::string, tag> tags;
+    std::shared_ptr<tag_dict> global_tags;
+    std::shared_ptr<tag_dict> tags;
 
     btBroadphaseInterface *broadphase;
     btDefaultCollisionConfiguration *collisionConfiguration;

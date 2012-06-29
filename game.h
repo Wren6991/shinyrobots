@@ -67,8 +67,11 @@ class game
     void update();
     void render();
     void mainloop();
+    void initLisp();
+    void setMotor(std::string name, double speed);
     physObj* staticFromJson(Json::Value obj, std::string currentpath);
     physObj* dynamicFromJson(Json::Value obj, std::string currentpath);
+    btTypedConstraint* constraintFromJson(Json::Value obj);
 
     ~game();
 };

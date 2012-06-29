@@ -1,0 +1,13 @@
+{
+  "name": "Test level.",
+  "description": "A simple test. Say hello to bob.",
+  "staticmeshes":
+  [
+    {"mesh": "arena_yz.bsm", "location": [0, 0, 0]}
+  ],
+  "dynamics":
+  [
+    {"view": "bob.bsm", "hull": "bob.bsm", "mass": 1, "location": [-1, 5, 0]},
+    {"view": "sphere.bsm", "shape": {"type": "sphere"}, "mass": 1, "location": [0, 10, 0]}
+  ]
+}

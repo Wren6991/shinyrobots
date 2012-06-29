@@ -3,10 +3,29 @@
 #include <sstream>
 #include <fstream>
 #include <json/json.h>
+#include "lisp/proc.h"
 
 #define RAD_TO_DEGREES (180.0 / 3.14159265358979323846)
 
 game *currentinstance;  // :(
+
+extern std::shared_ptr<environment> global_env;
+environment *global_env_ptr;
+extern std::shared_ptr<environment> env;
+
+void runLisp(std::string exprs)
+{
+    parser p(tokenize(exprs));
+    try
+    {
+        while (true)
+            proc_eval(p.read());
+    }
+    catch (exception e)
+    {
+        std::cout << e.err;
+    }
+}
 
 void game::camera::orientationFromAngles()
 {
@@ -55,15 +74,7 @@ game::game(std::string path_)
     running = true;
     captureMouse = false;
 
-    /*gWorld->addObject(new physObj(1, btVector3(0, 0, 0), 0, new model("C:/Users/Owner/Documents/cube2.bsm")));
-    gWorld->addObject(new physObj(1, btVector3(1, 5, 0), convexHullFromFile("C:/Users/Owner/Documents/bob.bsm"), new model("C:/Users/Owner/Documents/bob.bsm")));
-    btBvhTriangleMeshShape *msh = new btBvhTriangleMeshShape(collisionMeshFromFile("C:/Users/Owner/Documents/arena_yz.bsm"), true);
-    gWorld->addObject(new physObj(0, btVector3(0, -5, 0), msh, new model("C:/Users/Owner/Documents/arena_yz.bsm")));
-    gWorld->objects[0]->body->applyForce(btVector3(0, 200, 0), btVector3(1, 1, 0.8));*/
     loadLevel("arena");
-
-
-
 }
 
 void GLFWCALL game::dummy_keyCallback(int character, int action)         //we can't pass a non-static member function as a callback, but a static function can't access the data - this should do for now.
@@ -269,6 +280,7 @@ void game::loadLevel(std::string level)
     if (gWorld)
         delete gWorld;
     gWorld = new world();
+    initLisp();
     std::stringstream ss;
     ss << path << "levels/" << level << "/";
     std::string levelpath = ss.str();
@@ -320,38 +332,12 @@ void game::loadLevel(std::string level)
     {
         for (int i = 0; i < root["constraints"].size(); i++)
         {
-            Json::Value obj = root["constraints"][i];
-            if (!obj["tag"].isNull())
-                gWorld->tags[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
-            if (obj["type"].asString() == "axis")
-            {
-                if (obj["a"].isNull() || obj["b"].isNull())
-                    continue;
-                std::cout << obj["a"].asString() << ": " << gWorld->tags[obj["a"].asString()].index << "\n";
-                std::cout << obj["b"].asString() << ": " << gWorld->tags[obj["b"].asString()].index << "\n";
-                btRigidBody *rbA = gWorld->objects[gWorld->tags[obj["a"].asString()].index]->body;
-                btRigidBody *rbB = gWorld->objects[gWorld->tags[obj["b"].asString()].index]->body;
-                btTransform transA, transB;
-                rbA->getMotionState()->getWorldTransform(transA);
-                rbB->getMotionState()->getWorldTransform(transB);
+            gWorld->addConstraint(constraintFromJson(root["constraints"][i]));
 
-                btVector3 axisa, axisb;
-                if (!obj["axis"].isNull())
-                {
-                    axisa = jsonVector(obj["axis"], btVector3(1, 0, 0));
-                    axisb = axisa;
-                }
-                else
-                {
-                    axisa = jsonVector(obj["axisa"], btVector3(1, 0, 0));
-                    axisb = jsonVector(obj["axisb"], btVector3(1, 0, 0));
-                }
-                btHingeConstraint *hinge = new btHingeConstraint(*rbA, *rbB, jsonVector(obj["pivota"]), jsonVector(obj["pivotb"]), axisa, axisb);
-                hinge->enableAngularMotor(true, 10, 10);
-                gWorld->addConstraint(hinge);
-            }
         }
     }
+    runLisp("(set-motor \"motora\" 10)"
+            "(set-motor \"motorb\" (- 0 10))");
 }
 
 physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
@@ -406,6 +392,37 @@ physObj* game::dynamicFromJson(Json::Value obj, std::string currentpath)
     return new physObj(obj["mass"].asDouble(), jsonVector(obj["position"]), shape, mdl, jsonQuaternion(obj["orientation"]));
 }
 
+btTypedConstraint* game::constraintFromJson(Json::Value obj)
+{
+    if (!obj["tag"].isNull())
+        gWorld->tags[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
+    if (obj["type"].asString() == "axis")
+    {
+        if (obj["a"].isNull() || obj["b"].isNull())
+            return 0;
+        std::cout << obj["a"].asString() << ": " << gWorld->tags[obj["a"].asString()].index << "\n";
+        std::cout << obj["b"].asString() << ": " << gWorld->tags[obj["b"].asString()].index << "\n";
+        btRigidBody *rbA = gWorld->objects[gWorld->tags[obj["a"].asString()].index]->body;
+        btRigidBody *rbB = gWorld->objects[gWorld->tags[obj["b"].asString()].index]->body;
+        btTransform transA, transB;
+        rbA->getMotionState()->getWorldTransform(transA);
+        rbB->getMotionState()->getWorldTransform(transB);
+
+        btVector3 axisa, axisb;
+        if (!obj["axis"].isNull())
+        {
+            axisa = jsonVector(obj["axis"], btVector3(1, 0, 0));
+            axisb = axisa;
+        }
+        else
+        {
+            axisa = jsonVector(obj["axisa"], btVector3(1, 0, 0));
+            axisb = jsonVector(obj["axisb"], btVector3(1, 0, 0));
+        }
+        return new btHingeConstraint(*rbA, *rbB, jsonVector(obj["pivota"]), jsonVector(obj["pivotb"]), axisa, axisb);
+    }
+}
+
 void game::mainloop()
 {
     while (running)
@@ -413,4 +430,86 @@ void game::mainloop()
         update();
         render();
     }
+}
+
+cell proc_set_motor(const cell &arglist)
+{
+    if (!arglist.car || arglist.car->type != v_string)
+        throw(exception("Error: expected string as argument to set-motor"));
+    if (!arglist.cdr || !arglist.cdr->car)
+        throw(exception("Error: expected number as second argument to set-motor"));
+    currentinstance->setMotor(arglist.car->str, proc_eval(*arglist.cdr->car).n);
+    return cell();
+}
+
+void game::setMotor(std::string name, double speed)
+{
+    tag t = gWorld->tags[name];
+    if (t.type != tag::constraint)
+    {
+        std::cout << "constraint " << name << " does not exist.\n";
+        return;
+    }
+
+    ((btHingeConstraint*)gWorld->constraints[t.index])->enableAngularMotor(true, speed, 10);
+}
+
+void game::initLisp()
+{
+    global_env_ptr = new environment();
+    global_env = std::shared_ptr<environment>(global_env_ptr);
+    global_env->vars["PRINT"] = proc_print;
+    global_env->vars["WRITE"] = proc_write;
+    global_env->vars["EVAL"] = proc_eval_arglist;   //arglist interface to actual eval function.
+    global_env->vars["+"] = proc_add;
+    global_env->vars["-"] = proc_subtract;
+    global_env->vars["*"] = proc_multiply;
+    global_env->vars["/"] = proc_divide;
+    global_env->vars["="] = proc_equal;
+    global_env->vars["<"] = proc_less;
+    global_env->vars[">"] = proc_greater;
+    global_env->vars["<="] = proc_less_equal;
+    global_env->vars[">="] = proc_greater_equal;
+    global_env->vars["AND"] = proc_and;
+    global_env->vars["OR"] = proc_or;
+    global_env->vars["NOT"] = proc_not;
+    global_env->vars["IF"] = proc_if;
+    global_env->vars["BEGIN"] = proc_begin;
+    global_env->vars["DEFINE"] = proc_define;
+    global_env->vars["QUOTE"] = proc_quote;
+    global_env->vars["QUASI-QUOTE"] = proc_quasi_quote;
+    global_env->vars["LAMBDA"] = proc_lambda;
+    global_env->vars["MACRO"] = proc_macro;
+    global_env->vars["MACROEXPAND-1"] = proc_macroexpand;
+    global_env->vars["LISTVARS"] = proc_listvars;
+    global_env->vars["TAGBODY"] = proc_tagbody;
+    global_env->vars["GO"] = proc_go;
+    global_env->vars["CONS"] = proc_cons;
+    global_env->vars["CAR"] = proc_car;
+    global_env->vars["CDR"] = proc_cdr;
+    global_env->vars["LIST"] = proc_list;
+    global_env->vars["SETQ"] = proc_setq;
+    global_env->vars["NREVERSE"] = proc_nreverse;
+    global_env->vars["LET"] = proc_let;
+    global_env->vars["SET-MOTOR"] = proc_set_motor;
+    global_env->vars["NIL"] = cell(v_symbol, "NIL");
+    global_env->vars["TRUE"] = cell(v_symbol, "TRUE");
+    env = global_env;
+
+    runLisp(
+    "(define defmacro (macro (name vars &rest body) `(define ,name (macro ,vars ,@body))))"
+    "(defmacro defun (name vars &rest body) `(define ,name (lambda ,vars ,@body)))"
+    "(defmacro while (expr &rest body) `(tagbody top (if ,expr (begin ,@body (go top))) end))"
+    "(defmacro when (cond &rest body) `(if ,cond (begin ,@body)))"
+    "(defmacro unless (cond &rest body) `(if (not ,cond) (begin ,@body)))"
+    "(defmacro mapcar (func list) `(let ((acc '()) (lis ,list) (fun ,func))"
+    " (tagbody top"
+    "  (when (cdr lis)"
+    "        (push acc (fun (car lis)))"
+    "        (setq lis (cdr lis))"
+    "        (go top))"
+    "  (nreverse acc))))"
+    "(defmacro push (list arg) `(setq ,list (cons ,arg ,list)))"
+    "(print \"Hello from lisp!\")"
+    );
 }
