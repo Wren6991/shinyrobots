@@ -20,7 +20,7 @@ struct physObj
     void render();
     void addShape(btCollisionShape*);
 
-    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0, btQuaternion orientation = btQuaternion(0, 0, 0, 1));
+    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0, btQuaternion orientation = btQuaternion(0, 0, 0, 1), btScalar friction = 0.5f);
 };
 
 #endif // PHYS_OBJ_H_INCLUDED

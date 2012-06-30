@@ -35,7 +35,7 @@ void physObj::render()
     glPopMatrix();
 }
 
-physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape_, model *mdl_, btQuaternion orientation)
+physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape_, model *mdl_, btQuaternion orientation, btScalar friction)
 {
     mdl = mdl_;
     shape = shape_;
@@ -46,5 +46,6 @@ physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollis
     btVector3 inertia(0, 0, 0);
     shape->calculateLocalInertia(mass, inertia);
     btRigidBody::btRigidBodyConstructionInfo coninfo(mass, motionstate, shape, inertia);
+    coninfo.m_friction = friction;
     body = new btRigidBody(coninfo);
 }

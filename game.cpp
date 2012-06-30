@@ -23,7 +23,8 @@ void runLisp(std::string exprs)
     }
     catch (exception e)
     {
-        std::cout << e.err;
+        if (e.err != "Nothing to read.")
+            std::cout << e.err << "\n";
     }
 }
 
@@ -189,6 +190,24 @@ void game::update()
     if (!keys.held.MouseR)
         gWorld->btWorld->stepSimulation(1/60.f, 10);
 
+    runLisp(
+    "(let ((sa 0) (sb 0))"
+    " (when (get-key \"I\")"
+    "        (setq sa (+ sa 5))"
+    "        (setq sb (+ sb 5)))"
+    " (when (get-key \"J\")"
+    "        (setq sa (+ sa 5))"
+    "        (setq sb (- sb 5)))"
+    " (when (get-key \"L\")"
+    "        (setq sa (- sa 5))"
+    "        (setq sb (+ sb 5)))"
+    " (when (get-key \"K\")"
+    "        (setq sa (- sa 5))"
+    "        (setq sb (- sb 5)))"
+    " (set-motor\"motora\" sa)"
+    " (set-motor \"motorb\" sb))"
+    );
+
     running = glfwGetWindowParam(GLFW_OPENED);
 }
 
@@ -259,6 +278,14 @@ game::~game()
     glfwTerminate();
 }
 
+btScalar jsonScalar(Json::Value v, btScalar defaultval = 0.f)
+{
+    if (v.isNull())
+        return defaultval;
+    else
+        return v.asDouble();
+}
+
 btVector3 jsonVector(Json::Value v, btVector3 defaultvec = btVector3(0, 0, 0))
 {
     if (!v.isNull())
@@ -314,7 +341,7 @@ void game::loadLevel(std::string level)
         {
             gWorld->addObject(staticFromJson(root["staticmeshes"][i], levelpath));
             if (!root["staticmeshes"][i]["tag"].isNull())
-                gWorld->tags[root["staticmeshes"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+                (*gWorld->tags)[root["staticmeshes"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
         }
 
     }
@@ -324,7 +351,7 @@ void game::loadLevel(std::string level)
         {
             gWorld->addObject(dynamicFromJson(root["dynamics"][i], levelpath));
             if (!root["dynamics"][i]["tag"].isNull())
-                gWorld->tags[root["dynamics"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+                (*gWorld->tags)[root["dynamics"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
         }
 
     }
@@ -389,21 +416,23 @@ physObj* game::dynamicFromJson(Json::Value obj, std::string currentpath)
         }
     }
 
-    return new physObj(obj["mass"].asDouble(), jsonVector(obj["position"]), shape, mdl, jsonQuaternion(obj["orientation"]));
+    return new physObj(obj["mass"].asDouble(), jsonVector(obj["position"]), shape, mdl, jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f));
 }
 
 btTypedConstraint* game::constraintFromJson(Json::Value obj)
 {
     if (!obj["tag"].isNull())
-        gWorld->tags[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
+        (*gWorld->tags)[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
     if (obj["type"].asString() == "axis")
     {
         if (obj["a"].isNull() || obj["b"].isNull())
             return 0;
-        std::cout << obj["a"].asString() << ": " << gWorld->tags[obj["a"].asString()].index << "\n";
-        std::cout << obj["b"].asString() << ": " << gWorld->tags[obj["b"].asString()].index << "\n";
-        btRigidBody *rbA = gWorld->objects[gWorld->tags[obj["a"].asString()].index]->body;
-        btRigidBody *rbB = gWorld->objects[gWorld->tags[obj["b"].asString()].index]->body;
+        std::cout << obj["a"].asString() << ": " << (*gWorld->tags)[obj["a"].asString()].index << "\n";
+        std::cout << obj["b"].asString() << ": " << (*gWorld->tags)[obj["b"].asString()].index << "\n";
+        btRigidBody *rbA = gWorld->objects[(*gWorld->tags)[obj["a"].asString()].index]->body;
+        btRigidBody *rbB = gWorld->objects[(*gWorld->tags)[obj["b"].asString()].index]->body;
+        rbA->setSleepingThresholds(0, 0);
+        rbB->setSleepingThresholds(0, 0);
         btTransform transA, transB;
         rbA->getMotionState()->getWorldTransform(transA);
         rbB->getMotionState()->getWorldTransform(transB);
@@ -432,6 +461,20 @@ void game::mainloop()
     }
 }
 
+const cell nil(v_symbol, "NIL");
+
+cell proc_get_key(const cell &arglist)
+{
+    if (!arglist.car)
+        return nil;
+    cell result = proc_eval(*arglist.car);
+    if (result.type == v_number)
+        return glfwGetKey(result.n) ? cell(v_symbol, "TRUE") : nil;
+    if (result.type == v_string || result.type == v_symbol)
+        return glfwGetKey(*result.str.c_str()) ? cell(v_symbol, "TRUE") : nil;
+    return nil;
+}
+
 cell proc_set_motor(const cell &arglist)
 {
     if (!arglist.car || arglist.car->type != v_string)
@@ -444,7 +487,8 @@ cell proc_set_motor(const cell &arglist)
 
 void game::setMotor(std::string name, double speed)
 {
-    tag t = gWorld->tags[name];
+    std::cout << "setting motor " << name << " to " << speed << "\n";
+    tag t = (*gWorld->tags)[name];
     if (t.type != tag::constraint)
     {
         std::cout << "constraint " << name << " does not exist.\n";
@@ -492,6 +536,7 @@ void game::initLisp()
     global_env->vars["NREVERSE"] = proc_nreverse;
     global_env->vars["LET"] = proc_let;
     global_env->vars["SET-MOTOR"] = proc_set_motor;
+    global_env->vars["GET-KEY"] = proc_get_key;
     global_env->vars["NIL"] = cell(v_symbol, "NIL");
     global_env->vars["TRUE"] = cell(v_symbol, "TRUE");
     env = global_env;
