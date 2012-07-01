@@ -25,6 +25,7 @@ struct tag_dict
     std::shared_ptr <tag_dict> parent;
     std::map<std::string, tag> tags;
     tag& operator[](std::string);
+    tag_dict(std::shared_ptr<tag_dict> parent_ = std::shared_ptr<tag_dict>()) {parent = parent_;}
 };
 
 struct world
@@ -33,6 +34,7 @@ struct world
     std::vector<btTypedConstraint*> constraints;
     std::shared_ptr<tag_dict> global_tags;
     std::shared_ptr<tag_dict> tags;
+    std::vector<std::shared_ptr<tag_dict> > all_tags;
 
     btBroadphaseInterface *broadphase;
     btDefaultCollisionConfiguration *collisionConfiguration;

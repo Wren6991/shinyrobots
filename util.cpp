@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <json/json.h>
 #include <sstream>
 extern "C" {
 #include "bsm.h"
@@ -18,6 +19,59 @@ void strideCopy(char *dest, char *src, int sizeInBytes, int n, int stride_dest, 
             dest[byte] = src[byte];
         dest += stride_dest;
         src += stride_src;
+    }
+}
+
+btScalar jsonScalar(Json::Value v, btScalar defaultval)
+{
+    if (v.isNull())
+        return defaultval;
+    else
+        return v.asDouble();
+}
+
+btVector3 jsonVector(Json::Value v, btVector3 defaultvec)
+{
+    if (!v.isNull())
+        return btVector3(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble());
+    else
+        return defaultvec;
+}
+
+btQuaternion jsonQuaternion(Json::Value v, btQuaternion defaultquat)
+{
+    if (!v.isNull())
+        return btQuaternion(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble(), v[3].asDouble());
+    else
+        return defaultquat;
+}
+
+Json::Value jsonParseFile(std::string filename)
+{
+    std::fstream file(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!file.is_open())
+    {
+        std::cout << "Error: could not open file " << filename << "\n";
+        return Json::Value();
+    }
+
+    file.seekg(0, std::ios::end);
+    int length = file.tellg();
+    file.seekg(0, std::ios::beg);
+    char *buffer = new char[length + 1];
+    file.read(buffer, length);
+
+    Json::Reader reader;
+    Json::Value root;
+    bool parsingSuccessful = reader.parse(buffer, root);
+    if (parsingSuccessful)
+    {
+        return root;
+    }
+    else
+    {
+        std::cout << "In file " << filename << ": Parsing error(s):\n" << reader.getFormatedErrorMessages();
+        return Json::Value();
     }
 }
 

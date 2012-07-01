@@ -278,29 +278,6 @@ game::~game()
     glfwTerminate();
 }
 
-btScalar jsonScalar(Json::Value v, btScalar defaultval = 0.f)
-{
-    if (v.isNull())
-        return defaultval;
-    else
-        return v.asDouble();
-}
-
-btVector3 jsonVector(Json::Value v, btVector3 defaultvec = btVector3(0, 0, 0))
-{
-    if (!v.isNull())
-        return btVector3(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble());
-    else
-        return defaultvec;
-}
-
-btQuaternion jsonQuaternion(Json::Value v, btQuaternion defaultquat = btQuaternion(0, 0, 0, 1))
-{
-    if (!v.isNull())
-        return btQuaternion(v[0.].asDouble(), v[1].asDouble(), v[2].asDouble(), v[3].asDouble());
-    else
-        return defaultquat;
-}
 
 void game::loadLevel(std::string level)
 {
@@ -312,28 +289,9 @@ void game::loadLevel(std::string level)
     ss << path << "levels/" << level << "/";
     std::string levelpath = ss.str();
     ss << "info.json";
-    std::string infopath = ss.str();
-    std::fstream file(infopath.c_str(), std::ios::in | std::ios::binary);
-    if (!file.is_open())
-    {
-        std::cout << "Error: could not open file " << infopath << "\n";
+    Json::Value root = jsonParseFile(ss.str());
+    if (root.isNull())
         return;
-    }
-
-    file.seekg(0, std::ios::end);
-    int length = file.tellg();
-    file.seekg(0, std::ios::beg);
-    char *buffer = new char[length + 1];
-    file.read(buffer, length);
-
-    Json::Reader reader;
-    Json::Value root;
-    bool parsingSuccessful = reader.parse(buffer, root);
-    if (!parsingSuccessful)
-    {
-        std::cout << "Parsing error(s):\n" << reader.getFormatedErrorMessages();
-        return;
-    }
     std::cout << root["name"].asString() << "\n" << root["description"].asString() << "\n";
     if (root["staticmeshes"].isArray())
     {
@@ -363,9 +321,86 @@ void game::loadLevel(std::string level)
 
         }
     }
-    runLisp("(set-motor \"motora\" 10)"
-            "(set-motor \"motorb\" (- 0 10))");
+    if (root["assemblies"].isArray())
+    {
+        for (int i = 0; i < root["assemblies"].size(); i++)
+        {
+            Json::Value obj = root["assemblies"][i];
+            btVector3 pos = jsonVector(obj["position"]);
+            btQuaternion orientation = jsonQuaternion(obj["orientation"]);
+            if (!obj["name"].isNull())
+                loadAssembly(obj["name"].asString(), btTransform(orientation, pos));
+        }
+    }
 }
+
+void game::loadAssembly(std::string name, btTransform location)
+{    if (!gWorld)
+    {
+        std::cout << "Cannot load assemblies with no world!\n";
+        return;
+    }
+    std::stringstream ss;
+    ss << path << "assemblies/" << name << "/";
+    std::string assempath = ss.str();
+    ss << "info.json";
+    Json::Value root = jsonParseFile(ss.str());
+    if (root.isNull())
+        return;
+    gWorld->tags = std::shared_ptr<tag_dict>(new tag_dict(gWorld->tags));
+    gWorld->all_tags.push_back(gWorld->tags);
+    std::cout << "Loading assembly" << root["name"].asString() << "\n";
+    if (root["staticmeshes"].isArray())
+    {
+        for (int i = 0; i < root["staticmeshes"].size(); i++)
+        {
+            physObj *newobj = staticFromJson(root["staticmeshes"][i], assempath);
+            btTransform localtrans;
+            newobj->body->getMotionState()->getWorldTransform(localtrans);
+            newobj->body->getMotionState()->setWorldTransform(localtrans * location);  // translate into world space.
+            newobj->body->setMotionState(newobj->body->getMotionState());
+            gWorld->addObject(newobj);
+            if (!root["staticmeshes"][i]["tag"].isNull())
+                (*gWorld->tags)[root["staticmeshes"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+        }
+    }
+    if (root["dynamics"].isArray())
+    {
+        for (int i = 0; i < root["dynamics"].size(); i++)
+        {
+            physObj *newobj = dynamicFromJson(root["dynamics"][i], assempath);
+            btTransform localtrans;
+            newobj->body->getMotionState()->getWorldTransform(localtrans);
+            newobj->body->getMotionState()->setWorldTransform(location * localtrans);   // translate into world space.
+            newobj->body->setMotionState(newobj->body->getMotionState());               // flush translation to body's m_worldTransform (it's private...)
+            gWorld->addObject(newobj);
+            if (!root["dynamics"][i]["tag"].isNull())
+                (*gWorld->tags)[root["dynamics"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+        }
+
+    }
+    if (root["constraints"].isArray())
+    {
+        for (int i = 0; i < root["constraints"].size(); i++)
+        {
+            gWorld->addConstraint(constraintFromJson(root["constraints"][i]));
+
+        }
+    }
+    if (root["assemblies"].isArray())
+    {
+        for (int i = 0; i < root["assemblies"].size(); i++)
+        {
+            Json::Value obj = root["assemblies"][i];
+            btVector3 pos = jsonVector(obj["position"]);
+            btQuaternion orientation = jsonQuaternion(obj["orientation"]);
+            if (!obj["name"].isNull())
+                loadAssembly(obj["name"].asString(), btTransform(orientation, pos));
+        }
+    }
+    gWorld->tags = gWorld->tags->parent;
+}
+
 
 physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
 {
@@ -375,7 +410,7 @@ physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
     {
         std::stringstream ss;
         ss << currentpath << obj["mesh"].asString();
-        mdl = new model(ss.str())  ;
+        mdl = new model(ss.str());
         mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
     }
 

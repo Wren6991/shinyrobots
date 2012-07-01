@@ -64,6 +64,7 @@ class game
 
     game(std::string path_ = "./");
     void loadLevel(std::string level = "test");
+    void loadAssembly(std::string name, btTransform location = btTransform());
     void update();
     void render();
     void mainloop();
