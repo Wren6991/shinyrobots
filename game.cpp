@@ -7,11 +7,11 @@
 
 #define RAD_TO_DEGREES (180.0 / 3.14159265358979323846)
 
-game *currentinstance;  // :(
-
 extern std::shared_ptr<environment> global_env;
 environment *global_env_ptr;
 extern std::shared_ptr<environment> env;
+
+gameScene *currentinstance;
 
 void runLisp(std::string exprs)
 {
@@ -28,7 +28,7 @@ void runLisp(std::string exprs)
     }
 }
 
-void game::camera::orientationFromAngles()
+void gameScene::camera::orientationFromAngles()
 {
     orientation.setEuler(yaw, pitch, 0);
     btQuaternion qforward = orientation * btQuaternion(0, 0, -1, 0) * orientation.inverse();
@@ -39,131 +39,31 @@ void game::camera::orientationFromAngles()
     up = btVector3(qup.getX(), qup.getY(), qup.getZ());
 }
 
-game::game(std::string path_)
+gameScene::gameScene(std::string path_)
 {
+    currentinstance = this;
     gWorld = 0;
     path = path_;
-    for(int i = 0; i < sizeof(keys); i++)
+    /*for(int i = 0; i < sizeof(keys); i++)
         ((char*)&keys)[i] = 0;
-    currentinstance = this;         //so the key callback can access the key state... :(
+    currentinstance = this;         //so the key callback can access the key state... :(*/
     camera.position = btVector3(0, 0, 10);
     camera.pitch = 0;
     camera.yaw = 0;
     camera.orientationFromAngles();
-
-    glfwInit();
-    if( !glfwOpenWindow(1024, 768, 0, 0, 0, 0, 0, 0, GLFW_WINDOW))
-    {
-        glfwTerminate();
-    }
-    glfwSetWindowTitle("LISP");
-    glfwSwapInterval(1);
-    glfwSetKeyCallback(dummy_keyCallback);
-
-    GLenum err = glewInit();
-    if (GLEW_OK != err)
-    {
-        std::cout << "GLEW init failed: \"" << glewGetErrorString(err) << "\". Shutting down...\n";
-        char c;
-        std::cin >> c;
-    }
-    else
-    {
-        std::cout << "GLEW OK! OGL version: " << GLEW_VERSION_MAJOR << "." << GLEW_VERSION_MINOR << "\n";
-    }
-
-    running = true;
-    captureMouse = false;
+    //glfwSetKeyCallback(dummy_keyCallback);
 
     loadLevel("arena");
 }
 
-void GLFWCALL game::dummy_keyCallback(int character, int action)         //we can't pass a non-static member function as a callback, but a static function can't access the data - this should do for now.
+
+void gameScene::update(sceneInfo &info)
 {
-    switch(character)
-    {
-        case 'W':
-            currentinstance->keys.held.W = action;
-            break;
-        case 'S':
-            currentinstance->keys.held.S = action;
-            break;
-        case 'A':
-            currentinstance->keys.held.A = action;
-            break;
-        case 'D':
-            currentinstance->keys.held.D = action;
-            break;
-        case ' ':
-            currentinstance->keys.held.space = action;
-        default:
-            break;
-    }
-}
-
-void GLFWCALL game::keyCallback(int character, int action)
-{
-
-}
-
-void game::checkControls()
-{
-    if(glfwGetMouseButton(GLFW_MOUSE_BUTTON_LEFT))
-    {
-            keys.newPress.MouseL = !keys.held.MouseL;
-            keys.held.MouseL = true;
-    }
-    else
-    {
-        keys.newPress.MouseL = false;
-        keys.held.MouseL = false;
-    }
-
-    if(glfwGetMouseButton(GLFW_MOUSE_BUTTON_RIGHT))
-    {
-            keys.newPress.MouseR = !keys.held.MouseR;
-            keys.held.MouseR = true;
-    }
-    else
-    {
-        keys.newPress.MouseR = false;
-        keys.held.MouseR = false;
-    }
-}
-
-
-
-void game::update()
-{
-    checkControls();
-    lastmousex = mousex;
-    lastmousey = mousey;
-    glfwGetMousePos(&mousex, &mousey);
-
-    if (!captureMouse && mousex > 0 && mousex < width && mousey > 0 && mousey < height && keys.held.MouseL)
-    {
-         captureMouse = true;
-         glfwSetMousePos(width / 2, height / 2);
-         mousex = width / 2;
-         mousey = height / 2;
-    }
-
-
-    if (!glfwGetKey(GLFW_KEY_ESC) && glfwGetWindowParam(GLFW_ACTIVE) && captureMouse)
-    {
-        glfwDisable(GLFW_MOUSE_CURSOR);
-        camera.pitch -= (mousey - height / 2) * 0.01;
-        camera.yaw -= (mousex - width / 2) * 0.01;
-        glfwSetMousePos(width / 2, height / 2);
-
-    }
-    else
-    {
-        glfwEnable(GLFW_MOUSE_CURSOR);
-        captureMouse = false;
-    }
-
+    camera.pitch -= info.dmousey * 0.02;
+    camera.yaw -= info.dmousex * 0.02;
     camera.orientationFromAngles();
+
+    sceneInfo::keyState &keys = info.keys;
 
     if (keys.held.W)
     {
@@ -207,24 +107,13 @@ void game::update()
     " (set-motor\"motora\" sa)"
     " (set-motor \"motorb\" sb))"
     );
-
-    running = glfwGetWindowParam(GLFW_OPENED);
 }
 
-void game::render()
+void gameScene::render(sceneInfo &info)
 {
-    glfwGetWindowSize( &width, &height );
-    height = height > 0 ? height : 1;
-
-    glViewport( 0, 0, width, height );
-
-    glClearColor( 0.5f, 0.5f, 0.5f, 0.0f );
-    glClearDepth(1.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glMatrixMode( GL_PROJECTION );
     glLoadIdentity();
-    glFrustum((-1.f * width) / height, (1.f * width) / height, -1.f, 1.f, 1.f, 1000.f);
+    glFrustum((-1.f * info.width) / info.height, (1.f * info.width) / info.height, -1.f, 1.f, 1.f, 1000.f);
 
     glMatrixMode( GL_MODELVIEW );
     glLoadIdentity();
@@ -270,16 +159,15 @@ void game::render()
     glEnable(GL_CULL_FACE);
 
     gWorld->render();
-    glfwSwapBuffers();
 }
 
-game::~game()
+gameScene::~gameScene()
 {
-    glfwTerminate();
+    if (gWorld)
+        delete gWorld;
 }
 
-
-void game::loadLevel(std::string level)
+void gameScene::loadLevel(std::string level)
 {
     if (gWorld)
         delete gWorld;
@@ -295,7 +183,7 @@ void game::loadLevel(std::string level)
     std::cout << root["name"].asString() << "\n" << root["description"].asString() << "\n";
     if (root["staticmeshes"].isArray())
     {
-        for (int i = 0; i < root["staticmeshes"].size(); i++)
+        for (unsigned int i = 0; i < root["staticmeshes"].size(); i++)
         {
             gWorld->addObject(staticFromJson(root["staticmeshes"][i], levelpath));
             if (!root["staticmeshes"][i]["tag"].isNull())
@@ -305,7 +193,7 @@ void game::loadLevel(std::string level)
     }
     if (root["dynamics"].isArray())
     {
-        for (int i = 0; i < root["dynamics"].size(); i++)
+        for (unsigned int i = 0; i < root["dynamics"].size(); i++)
         {
             gWorld->addObject(dynamicFromJson(root["dynamics"][i], levelpath));
             if (!root["dynamics"][i]["tag"].isNull())
@@ -315,7 +203,7 @@ void game::loadLevel(std::string level)
     }
     if (root["constraints"].isArray())
     {
-        for (int i = 0; i < root["constraints"].size(); i++)
+        for (unsigned int i = 0; i < root["constraints"].size(); i++)
         {
             gWorld->addConstraint(constraintFromJson(root["constraints"][i]));
 
@@ -323,7 +211,7 @@ void game::loadLevel(std::string level)
     }
     if (root["assemblies"].isArray())
     {
-        for (int i = 0; i < root["assemblies"].size(); i++)
+        for (unsigned int i = 0; i < root["assemblies"].size(); i++)
         {
             Json::Value obj = root["assemblies"][i];
             btVector3 pos = jsonVector(obj["position"]);
@@ -334,7 +222,7 @@ void game::loadLevel(std::string level)
     }
 }
 
-void game::loadAssembly(std::string name, btTransform location)
+void gameScene::loadAssembly(std::string name, btTransform location)
 {    if (!gWorld)
     {
         std::cout << "Cannot load assemblies with no world!\n";
@@ -352,7 +240,7 @@ void game::loadAssembly(std::string name, btTransform location)
     std::cout << "Loading assembly" << root["name"].asString() << "\n";
     if (root["staticmeshes"].isArray())
     {
-        for (int i = 0; i < root["staticmeshes"].size(); i++)
+        for (unsigned int i = 0; i < root["staticmeshes"].size(); i++)
         {
             physObj *newobj = staticFromJson(root["staticmeshes"][i], assempath);
             btTransform localtrans;
@@ -366,7 +254,7 @@ void game::loadAssembly(std::string name, btTransform location)
     }
     if (root["dynamics"].isArray())
     {
-        for (int i = 0; i < root["dynamics"].size(); i++)
+        for (unsigned int i = 0; i < root["dynamics"].size(); i++)
         {
             physObj *newobj = dynamicFromJson(root["dynamics"][i], assempath);
             btTransform localtrans;
@@ -381,7 +269,7 @@ void game::loadAssembly(std::string name, btTransform location)
     }
     if (root["constraints"].isArray())
     {
-        for (int i = 0; i < root["constraints"].size(); i++)
+        for (unsigned int i = 0; i < root["constraints"].size(); i++)
         {
             gWorld->addConstraint(constraintFromJson(root["constraints"][i]));
 
@@ -389,7 +277,7 @@ void game::loadAssembly(std::string name, btTransform location)
     }
     if (root["assemblies"].isArray())
     {
-        for (int i = 0; i < root["assemblies"].size(); i++)
+        for (unsigned int i = 0; i < root["assemblies"].size(); i++)
         {
             Json::Value obj = root["assemblies"][i];
             btVector3 pos = jsonVector(obj["position"]);
@@ -402,7 +290,7 @@ void game::loadAssembly(std::string name, btTransform location)
 }
 
 
-physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
+physObj* gameScene::staticFromJson(Json::Value obj, std::string currentpath)
 {
     model *mdl = 0;
     btBvhTriangleMeshShape *mesh = 0;
@@ -417,7 +305,7 @@ physObj* game::staticFromJson(Json::Value obj, std::string currentpath)
     return new physObj(0, jsonVector(obj["position"]), mesh, mdl, jsonQuaternion(obj["orientation"]));
 }
 
-physObj* game::dynamicFromJson(Json::Value obj, std::string currentpath)
+physObj* gameScene::dynamicFromJson(Json::Value obj, std::string currentpath)
 {
     model *mdl = 0;
     btCollisionShape *shape = 0;
@@ -454,7 +342,7 @@ physObj* game::dynamicFromJson(Json::Value obj, std::string currentpath)
     return new physObj(obj["mass"].asDouble(), jsonVector(obj["position"]), shape, mdl, jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f));
 }
 
-btTypedConstraint* game::constraintFromJson(Json::Value obj)
+btTypedConstraint* gameScene::constraintFromJson(Json::Value obj)
 {
     if (!obj["tag"].isNull())
         (*gWorld->tags)[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
@@ -487,14 +375,6 @@ btTypedConstraint* game::constraintFromJson(Json::Value obj)
     }
 }
 
-void game::mainloop()
-{
-    while (running)
-    {
-        update();
-        render();
-    }
-}
 
 const cell nil(v_symbol, "NIL");
 
@@ -520,7 +400,7 @@ cell proc_set_motor(const cell &arglist)
     return cell();
 }
 
-void game::setMotor(std::string name, double speed)
+void gameScene::setMotor(std::string name, double speed)
 {
     std::cout << "setting motor " << name << " to " << speed << "\n";
     tag t = (*gWorld->tags)[name];
@@ -533,7 +413,7 @@ void game::setMotor(std::string name, double speed)
     ((btHingeConstraint*)gWorld->constraints[t.index])->enableAngularMotor(true, speed, 10);
 }
 
-void game::initLisp()
+void gameScene::initLisp()
 {
     global_env_ptr = new environment();
     global_env = std::shared_ptr<environment>(global_env_ptr);

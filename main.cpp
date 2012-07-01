@@ -1,4 +1,4 @@
-#include "game.h"
+#include "app.h"
 #include <iostream>
 
 int main(int argc, char **argv)
@@ -9,6 +9,7 @@ int main(int argc, char **argv)
         slashpos = path.rfind("/");
     path = path.substr(0, slashpos + 1);
     std::cout << path << "\n";
-    game g(path);
-    g.mainloop();
+
+    app robotsApplication(path);
+    robotsApplication.mainLoop();
 }
