@@ -1,0 +1,8 @@
+{
+	"name": "Wedge Body",
+	"description": "A wedge-shaped robot body.",
+	"dynamics":
+	[
+		{"view": "wedgebody.bsm", "hull": "wedgebody.bsm", "mass": 1}
+	]
+}

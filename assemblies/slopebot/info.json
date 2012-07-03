@@ -1,0 +1,15 @@
+{
+ 	"name": "Slope Robot",
+	"description": "Simple test assembly.",
+	"dynamics":
+	[
+		{"tag": "lwheel", "view": "wheel.bsm", "hull": "wheel.bsm", "mass": 1, "position": [0, 0.8, 0], "orientation": [0, 1, 0, 0], "friction": 1.0},
+		{"tag": "rwheel", "view": "wheel.bsm", "hull": "wheel.bsm", "mass": 1, "position": [1.6, 0.8, 0], "orientation": [0, 0, 0, 1], "friction": 1.0},
+		{"tag": "slbody", "view": "slopebody.bsm", "hull": "slopebody.bsm", "mass": 2, "position": [0.8, 1, 0]}
+	],
+	"constraints":
+	[
+		{"tag": "motora", "type": "axis", "a": "lwheel", "b": "slbody", "pivota": [0, 0, 0], "pivotb": [-0.8, -0.15, 0.2], "axisa": [-1, 0, 0], "axisb": [1, 0, 0]},
+		{"tag": "motorb", "type": "axis", "a": "rwheel", "b": "slbody", "pivota": [0, 0, 0], "pivotb": [ 0.8, -0.15, 0.2]}
+	]
+}

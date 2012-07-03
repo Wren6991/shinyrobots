@@ -1,0 +1,8 @@
+{
+	"name": "Canon",
+	"description": "A big canon. Aim away from face!",
+	"dynamics":
+	[
+		{"view": "canon.bsm", "hull": "canon.bsm", "mass": 1}
+	]
+}
