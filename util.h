@@ -2,8 +2,11 @@
 #define UTIL_H_INCLUDED
 
 #include <btBulletDynamicsCommon.h>
-#include <string>
+#include <GL/glew.h>
+#include <GL/glfw.h>
 #include <json/json.h>
+#include <string>
+
 #include "phys_obj.h"
 
 struct charbuffer
@@ -21,6 +24,8 @@ btScalar jsonScalar(Json::Value v, btScalar defaultval = 0.f);
 btVector3 jsonVector(Json::Value v, btVector3 defaultvec = btVector3(0, 0, 0));
 btQuaternion jsonQuaternion(Json::Value v, btQuaternion defaultquat = btQuaternion(0, 0, 0, 1));
 Json::Value jsonParseFile(std::string filename);
+
+GLuint makeTexture(GLFWimage img);
 
 
 

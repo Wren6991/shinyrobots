@@ -1,5 +1,8 @@
 #ifndef SCENE_H_INCLUDED
 #define SCENE_H_INCLUDED
+#include <string>
+
+class scene;
 
 struct sceneInfo
 {
@@ -30,6 +33,7 @@ struct sceneInfo
             bool MouseR;
         } newPress;
     } keys;
+    scene *currentscene;
 };
 
 class scene

@@ -2,7 +2,7 @@
 #define MODEL_H_INCLUDED
 
 #include <string>
-#include <GL/gl.h>
+#include <GL/glew.h>
 
 struct vertex
 {

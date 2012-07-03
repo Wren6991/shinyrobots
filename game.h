@@ -1,7 +1,7 @@
 #ifndef GAME_H_INCLUDED
 #define GAME_H_INCLUDED
 
-//#define GLFW_DLL
+#include <GL/glew.h>
 #include <GL/glfw.h>
 #include <json/json.h>
 #include "scene.h"

@@ -1,7 +1,7 @@
 #ifndef PHYS_OBJ_H_INCLUDED
 #define PHYS_OBJ_H_INCLUDED
 
-#include <GL/gl.h>
+#include <GL/glew.h>
 #include <btBulletDynamicsCommon.h>
 #include <vector>
 

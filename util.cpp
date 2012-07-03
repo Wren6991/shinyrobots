@@ -165,3 +165,16 @@ btConvexHullShape* convexHullFromFile(std::string filename)
 
     return hull;
 }
+
+GLuint makeTexture(GLFWimage img)
+{
+    GLuint texhandle;
+    glGenTextures(1, &texhandle);
+    glBindTexture(GL_TEXTURE_2D, texhandle);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_WRAP_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_WRAP_BORDER);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.Width, img.Height, 0, img.Format, GL_UNSIGNED_BYTE, img.Data);
+    return texhandle;
+}

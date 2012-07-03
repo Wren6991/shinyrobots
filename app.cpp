@@ -1,5 +1,6 @@
 #include "app.h"
 #include "game.h"
+#include "workshop.h"
 #include <iostream>
 
 app *currentInstance;
@@ -31,7 +32,7 @@ app::app(std::string path_)
         std::cout << "GLEW OK! OGL version: " << GLEW_VERSION_MAJOR << "." << GLEW_VERSION_MINOR << "\n";
     }
 
-    current = new gameScene(path);
+    info.currentscene = new workshopScene(path);
 
     info.running = true;
     info.captureMouse = false;
@@ -125,7 +126,7 @@ void app::update()
         info.captureMouse = false;
     }
 
-    current->update(info);
+    info.currentscene->update(info);
 
     info.running = glfwGetWindowParam(GLFW_OPENED);
 }
@@ -141,7 +142,7 @@ void app::render()
     glClearDepth(1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    current->render(info);
+    info.currentscene->render(info);
 
     glfwSwapBuffers();
 }
