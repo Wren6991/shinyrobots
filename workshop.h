@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "scene.h"
+#include "world.h"
 
 class workshopScene: public scene
 {
@@ -14,10 +15,22 @@ class workshopScene: public scene
     GLuint cursor;
     int cursorx, cursory;
     bool mouseWasCaptured;
+    world *gWorld;
+    int selectedItem;
+    public: struct camera
+    {
+        btVector3 position;
+        btQuaternion orientation;
+        float pitch, yaw;
+        btVector3 forward, right, up;
+        void orientationFromAngles();
+    }   camera;
+
     public:
     void render(sceneInfo &info);
     void update(sceneInfo &info);
     workshopScene(std::string path_);
+    ~workshopScene();
 };
 
 

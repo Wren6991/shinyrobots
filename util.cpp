@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <btBulletDynamicsCommon.h>
 #include <iostream>
 #include <fstream>
 #include <json/json.h>
@@ -73,6 +74,158 @@ Json::Value jsonParseFile(std::string filename)
         std::cout << "In file " << filename << ": Parsing error(s):\n" << reader.getFormatedErrorMessages();
         return Json::Value();
     }
+}
+
+physObj* staticFromJson(Json::Value obj, std::string currentpath, btTransform transform)
+{
+    model *mdl = 0;
+    btBvhTriangleMeshShape *mesh = 0;
+    if (!obj["mesh"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["mesh"].asString();
+        mdl = new model(ss.str());
+        mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
+    }
+
+    return new physObj(0, jsonVector(obj["position"]), mesh, mdl, jsonQuaternion(obj["orientation"]));
+}
+
+physObj* dynamicFromJson(Json::Value obj, std::string currentpath, btTransform transform)
+{
+    model *mdl = 0;
+    btCollisionShape *shape = 0;
+    if (!obj["view"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["view"].asString();
+        mdl = new model(ss.str());
+    }
+    if (!obj["hull"].isNull())
+    {
+        std::stringstream ss;
+        ss << currentpath << obj["hull"].asString();
+        shape = convexHullFromFile(ss.str());
+    }
+    else if (obj["shape"].isObject())
+    {
+        std::string type = obj["shape"]["type"].asString();
+        if (type == "sphere")
+        {
+            double radius = obj["shape"]["radius"].asDouble();
+            shape = new btSphereShape(radius == 0? 1 : radius);
+        }
+        else if (type == "box")
+        {
+            Json::Value extent = obj["shape"]["extent"];
+            if (extent.isArray())
+                shape = new btBoxShape(btVector3(extent[0.].asDouble(), extent[1].asDouble(), extent[2].asDouble()));
+            else
+                shape = new btBoxShape(btVector3(1, 1, 1));
+        }
+    }
+
+    return new physObj(obj["mass"].asDouble(), transform * jsonVector(obj["position"]), shape, mdl, transform * jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f));
+}
+
+btTypedConstraint* constraintFromJson(Json::Value obj, world *gWorld)
+{
+    if (!obj["tag"].isNull())
+        (*gWorld->tags)[obj["tag"].asString()] = tag(tag::constraint, gWorld->constraints.size());
+    if (obj["type"].asString() == "axis")
+    {
+        if (obj["a"].isNull() || obj["b"].isNull())
+            return 0;
+        std::cout << obj["a"].asString() << ": " << (*gWorld->tags)[obj["a"].asString()].index << "\n";
+        std::cout << obj["b"].asString() << ": " << (*gWorld->tags)[obj["b"].asString()].index << "\n";
+        btRigidBody *rbA = gWorld->objects[(*gWorld->tags)[obj["a"].asString()].index]->body;
+        btRigidBody *rbB = gWorld->objects[(*gWorld->tags)[obj["b"].asString()].index]->body;
+        rbA->setSleepingThresholds(0, 0);
+        rbB->setSleepingThresholds(0, 0);
+        btTransform transA, transB;
+        rbA->getMotionState()->getWorldTransform(transA);
+        rbB->getMotionState()->getWorldTransform(transB);
+
+        btVector3 axisa, axisb;
+        if (!obj["axis"].isNull())
+        {
+            axisa = jsonVector(obj["axis"], btVector3(1, 0, 0));
+            axisb = axisa;
+        }
+        else
+        {
+            axisa = jsonVector(obj["axisa"], btVector3(1, 0, 0));
+            axisb = jsonVector(obj["axisb"], btVector3(1, 0, 0));
+        }
+        return new btHingeConstraint(*rbA, *rbB, jsonVector(obj["pivota"]), jsonVector(obj["pivotb"]), axisa, axisb);
+    }
+}
+
+void loadAssembly(std::string name, btTransform location, std::string path, world *gWorld)
+{    if (!gWorld)
+    {
+        std::cout << "Cannot load assemblies with no world!\n";
+        return;
+    }
+    std::stringstream ss;
+    ss << path << "assemblies/" << name << "/";
+    std::string assempath = ss.str();
+    ss << "info.json";
+    Json::Value root = jsonParseFile(ss.str());
+    if (root.isNull())
+        return;
+    gWorld->tags = std::shared_ptr<tag_dict>(new tag_dict(gWorld->tags));
+    gWorld->all_tags.push_back(gWorld->tags);
+    std::cout << "Loading assembly" << root["name"].asString() << "\n";
+    if (root["staticmeshes"].isArray())
+    {
+        for (unsigned int i = 0; i < root["staticmeshes"].size(); i++)
+        {
+            physObj *newobj = staticFromJson(root["staticmeshes"][i], assempath);
+            btTransform localtrans;
+            newobj->body->getMotionState()->getWorldTransform(localtrans);
+            newobj->body->getMotionState()->setWorldTransform(location * localtrans);  // translate into world space.
+            newobj->body->setMotionState(newobj->body->getMotionState());
+            gWorld->addObject(newobj);
+            if (!root["staticmeshes"][i]["tag"].isNull())
+                (*gWorld->tags)[root["staticmeshes"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+        }
+    }
+    if (root["dynamics"].isArray())
+    {
+        for (unsigned int i = 0; i < root["dynamics"].size(); i++)
+        {
+            physObj *newobj = dynamicFromJson(root["dynamics"][i], assempath);
+            btTransform localtrans;
+            newobj->body->getMotionState()->getWorldTransform(localtrans);
+            newobj->body->getMotionState()->setWorldTransform(location * localtrans);   // translate into world space.
+            newobj->body->setMotionState(newobj->body->getMotionState());               // flush translation to body's m_worldTransform (it's private...)
+            gWorld->addObject(newobj);
+            if (!root["dynamics"][i]["tag"].isNull())
+                (*gWorld->tags)[root["dynamics"][i]["tag"].asString()] = tag(tag::body, gWorld->objects.size() - 1);
+        }
+
+    }
+    if (root["constraints"].isArray())
+    {
+        for (unsigned int i = 0; i < root["constraints"].size(); i++)
+        {
+            gWorld->addConstraint(constraintFromJson(root["constraints"][i], gWorld));
+
+        }
+    }
+    if (root["assemblies"].isArray())
+    {
+        for (unsigned int i = 0; i < root["assemblies"].size(); i++)
+        {
+            Json::Value obj = root["assemblies"][i];
+            btVector3 pos = jsonVector(obj["position"]);
+            btQuaternion orientation = jsonQuaternion(obj["orientation"]);
+            if (!obj["name"].isNull())
+                loadAssembly(obj["name"].asString(), btTransform(orientation, pos), path, gWorld);
+        }
+    }
+    gWorld->tags = gWorld->tags->parent;
 }
 
 charbuffer getFileContents(std::string filename)

@@ -3,6 +3,7 @@
 
 #include <GL/glew.h>
 #include <btBulletDynamicsCommon.h>
+#include <string>
 #include <vector>
 
 #include "model.h"
@@ -16,11 +17,12 @@ struct physObj
     btDefaultMotionState *motionstate;
     btRigidBody *body;
     model *mdl;
+    std::string tag;
 
     void render();
     void addShape(btCollisionShape*);
 
-    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0, btQuaternion orientation = btQuaternion(0, 0, 0, 1), btScalar friction = 0.5f);
+    physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0, btQuaternion orientation = btQuaternion(0, 0, 0, 1), btScalar friction = 0.5f, std::string tag_ = "");
 };
 
 #endif // PHYS_OBJ_H_INCLUDED

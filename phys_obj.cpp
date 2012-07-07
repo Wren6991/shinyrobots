@@ -35,7 +35,7 @@ void physObj::render()
     glPopMatrix();
 }
 
-physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape_, model *mdl_, btQuaternion orientation, btScalar friction)
+physObj::physObj(btScalar mass = 0, btVector3 pos = btVector3(0, 0, 0), btCollisionShape *shape_, model *mdl_, btQuaternion orientation, btScalar friction, std::string tag_)
 {
     mdl = mdl_;
     shape = shape_;

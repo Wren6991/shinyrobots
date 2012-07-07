@@ -32,7 +32,7 @@ app::app(std::string path_)
         std::cout << "GLEW OK! OGL version: " << GLEW_VERSION_MAJOR << "." << GLEW_VERSION_MINOR << "\n";
     }
 
-    info.currentscene = new workshopScene(path);
+    info.currentscene = new gameScene(path);
 
     info.running = true;
     info.captureMouse = false;
