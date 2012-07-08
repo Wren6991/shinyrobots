@@ -13,10 +13,17 @@ class workshopScene: public scene
     std::vector<GLuint> thumbnails;
     std::vector<std::string> partnames;
     GLuint cursor;
+    GLuint ninepatch;
     int cursorx, cursory;
     bool mouseWasCaptured;
     world *gWorld;
     int selectedItem;
+    btCollisionWorld::ClosestRayResultCallback mouseRayCallback;
+    btVector3 mouseRayDir;
+    btGeneric6DofConstraint *mouseConstraint;
+    btScalar mousePerpDist;
+    btRigidBody *mouseHeldBody;
+
     public: struct camera
     {
         btVector3 position;

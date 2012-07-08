@@ -32,6 +32,8 @@ struct sceneInfo
             bool MouseL;
             bool MouseR;
         } newPress;
+        int mouseWheel;
+        int dmouseWheel;
     } keys;
     scene *currentscene;
 };

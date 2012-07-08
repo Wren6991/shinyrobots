@@ -32,7 +32,7 @@ app::app(std::string path_)
         std::cout << "GLEW OK! OGL version: " << GLEW_VERSION_MAJOR << "." << GLEW_VERSION_MINOR << "\n";
     }
 
-    info.currentscene = new gameScene(path);
+    info.currentscene = new workshopScene(path);
 
     info.running = true;
     info.captureMouse = false;
@@ -86,6 +86,8 @@ void app::checkControls()
         keys.newPress.MouseR = false;
         keys.held.MouseR = false;
     }
+    keys.dmouseWheel = glfwGetMouseWheel() - keys.mouseWheel;
+    keys.mouseWheel += keys.dmouseWheel;
 }
 
 void app::mainLoop()
