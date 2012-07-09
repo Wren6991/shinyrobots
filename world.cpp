@@ -48,6 +48,29 @@ void world::render()
         (*iter)->render();
 }
 
+void world::removeBody(btRigidBody *body)
+{
+    std::vector<btTypedConstraint*>::iterator iter;
+    for (iter = gWorld->constraints.begin(); iter != gWorld->constraints.end(); iter++)
+    {
+        if (&((*iter)->getRigidBodyA()) == body || &((*iter)->getRigidBodyB()) == body)
+        {
+            gWorld->btWorld->removeConstraint(*iter);
+            delete *iter;
+            gWorld->constraints.erase(iter);
+        }
+        gWorld->btWorld->removeRigidBody(body);
+        for (std::vector<physObj*>::iterator iter = gWorld->objects.begin(); iter != gWorld->objects.end(); iter++)
+        {
+            if ((*iter)->body == body)
+            {
+                gWorld->objects.erase(iter);
+                break;
+            }
+        }
+    }
+}
+
 tag& tag_dict::operator[](std::string name)
 {
     std::map<std::string, tag>::iterator iter = tags.find(name);

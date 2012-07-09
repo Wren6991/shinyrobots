@@ -331,3 +331,13 @@ GLuint makeTexture(GLFWimage img)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, img.Width, img.Height, 0, img.Format, GL_UNSIGNED_BYTE, img.Data);
     return texhandle;
 }
+/* returns v/u:
+ * this is the quaternion that maps u onto v.
+ */
+
+btQuaternion vectorQuotient(btVector3 u, btVector3 v)
+{
+    u.normalize();
+    v.normalize();
+    return btQuaternion(u.cross(v), acos(u.dot(v)));
+}

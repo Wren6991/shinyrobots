@@ -12,17 +12,25 @@ class workshopScene: public scene
 {
     std::vector<GLuint> thumbnails;
     std::vector<std::string> partnames;
+    std::vector<GLuint> tooltextures;
     GLuint cursor;
     GLuint ninepatch;
+    GLuint button;
     int cursorx, cursory;
     bool mouseWasCaptured;
     world *gWorld;
     int selectedItem;
+    int selectedTool;
+    int toolListOffset;
     btCollisionWorld::ClosestRayResultCallback mouseRayCallback;
     btVector3 mouseRayDir;
     btGeneric6DofConstraint *mouseConstraint;
     btScalar mousePerpDist;
     btRigidBody *mouseHeldBody;
+    btCollisionWorld::ClosestRayResultCallback axisResult;
+    bool axisHasFirst;
+
+    GLuint textureFromFile(std::string name, std::string reldir = "data/");
 
     public: struct camera
     {

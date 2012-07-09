@@ -29,6 +29,8 @@ physObj* dynamicFromJson(Json::Value obj, std::string currentpath, btTransform t
 btTypedConstraint* constraintFromJson(Json::Value obj, world *gWorld);
 void loadAssembly(std::string name, btTransform location, std::string path, world *gWorld);
 GLuint makeTexture(GLFWimage img);
+btQuaternion vectorQuotient(btVector3 u, btVector3 v);
+
 
 
 
