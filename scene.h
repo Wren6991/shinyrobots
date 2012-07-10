@@ -1,6 +1,7 @@
 #ifndef SCENE_H_INCLUDED
 #define SCENE_H_INCLUDED
 #include <string>
+#include <vector>
 
 class scene;
 
@@ -22,6 +23,7 @@ struct sceneInfo
             bool space;
             bool MouseL;
             bool MouseR;
+            bool MouseM;
         } held;
         struct
         {
@@ -31,10 +33,12 @@ struct sceneInfo
             bool D;*/
             bool MouseL;
             bool MouseR;
+            bool MouseM;
         } newPress;
         int mouseWheel;
         int dmouseWheel;
     } keys;
+    std::vector<char> keybuffer;
     scene *currentscene;
 };
 

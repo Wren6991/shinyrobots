@@ -16,6 +16,7 @@ class app
 
 
     static void GLFWCALL dummy_keyCallback(int character, int action);
+    static void GLFWCALL charCallback(int character, int action);
     void checkControls();
 
 

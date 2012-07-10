@@ -19,6 +19,8 @@ app::app(std::string path_)
     glfwSetWindowTitle("LISP");
     glfwSwapInterval(1);
     glfwSetKeyCallback(dummy_keyCallback);
+    glfwSetCharCallback(charCallback);
+    glfwEnable(GLFW_KEY_REPEAT);
 
     GLenum err = glewInit();
     if (GLEW_OK != err)
@@ -41,6 +43,7 @@ app::app(std::string path_)
 void GLFWCALL app::dummy_keyCallback(int character, int action)         //we can't pass a non-static member function as a callback, but a static function can't access the data - this should do for now.
 {
     sceneInfo::keyState &keys = currentInstance->info.keys;
+    std::vector<char> &keybuffer = currentInstance->info.keybuffer;
     switch(character)
     {
         case 'W':
@@ -57,9 +60,19 @@ void GLFWCALL app::dummy_keyCallback(int character, int action)         //we can
             break;
         case ' ':
             keys.held.space = action;
+            break;
+        case GLFW_KEY_BACKSPACE:
+            if (action)
+                keybuffer.erase(keybuffer.end() - 1);
+            break;
         default:
             break;
     }
+}
+
+void GLFWCALL app::charCallback(int character, int action)
+{
+    currentInstance->info.keybuffer.push_back(character);
 }
 
 void app::checkControls()
@@ -85,6 +98,18 @@ void app::checkControls()
     {
         keys.newPress.MouseR = false;
         keys.held.MouseR = false;
+    }
+
+
+    if(glfwGetMouseButton(GLFW_MOUSE_BUTTON_MIDDLE))
+    {
+            keys.newPress.MouseM = !keys.held.MouseR;
+            keys.held.MouseM = true;
+    }
+    else
+    {
+        keys.newPress.MouseM = false;
+        keys.held.MouseM = false;
     }
     keys.dmouseWheel = glfwGetMouseWheel() - keys.mouseWheel;
     keys.mouseWheel += keys.dmouseWheel;
