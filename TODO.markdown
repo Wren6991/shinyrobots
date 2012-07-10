@@ -16,14 +16,10 @@ TODO
 git a
 So...
 -----
-Get assemblies loading
-
-- reuse level-loading code for statics, dynamics, constraints
- 
 Create workshop, assemble assemblies:
 
-- load list of assemblies (dirent.h)
-- allow them to be placed
+- add constraint tools
+- tool class for separating tools and their states/resources from the workshop
 - add make-on-place constraint semantics (?)
 
 Wiring!

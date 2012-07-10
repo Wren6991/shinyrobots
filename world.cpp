@@ -51,20 +51,21 @@ void world::render()
 void world::removeBody(btRigidBody *body)
 {
     std::vector<btTypedConstraint*>::iterator iter;
-    for (iter = gWorld->constraints.begin(); iter != gWorld->constraints.end(); iter++)
+    for (iter = constraints.begin(); iter != constraints.end(); iter++)
     {
-        if (&((*iter)->getRigidBodyA()) == body || &((*iter)->getRigidBodyB()) == body)
+        if ((&((*iter)->getRigidBodyA()) == body) || (&((*iter)->getRigidBodyB()) == body))
         {
-            gWorld->btWorld->removeConstraint(*iter);
+            btWorld->removeConstraint(*iter);
             delete *iter;
-            gWorld->constraints.erase(iter);
+            constraints.erase(iter);
+            iter--;
         }
-        gWorld->btWorld->removeRigidBody(body);
-        for (std::vector<physObj*>::iterator iter = gWorld->objects.begin(); iter != gWorld->objects.end(); iter++)
+        btWorld->removeRigidBody(body);
+        for (std::vector<physObj*>::iterator iter = objects.begin(); iter != objects.end(); iter++)
         {
             if ((*iter)->body == body)
             {
-                gWorld->objects.erase(iter);
+                objects.erase(iter);
                 break;
             }
         }

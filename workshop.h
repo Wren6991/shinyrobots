@@ -28,6 +28,8 @@ class workshopScene: public scene
     btScalar mousePerpDist;
     btRigidBody *mouseHeldBody;
     btCollisionWorld::ClosestRayResultCallback axisResult;
+    btVector3 axisFirstPivot;
+    btVector3 axisFirstNormal;
     bool axisHasFirst;
 
     GLuint textureFromFile(std::string name, std::string reldir = "data/");
