@@ -10,9 +10,6 @@
 
 struct physObj
 {
-    GLuint vbo;
-    GLuint ibo;
-
     btCollisionShape* shape;
     btDefaultMotionState *motionstate;
     btRigidBody *body;
@@ -20,7 +17,6 @@ struct physObj
     std::string tag;
 
     void render();
-    void addShape(btCollisionShape*);
 
     physObj(btScalar mass, btVector3 pos, btCollisionShape *shape_ = new btBoxShape(btVector3(1, 1, 1)), model *mdl_ = 0, btQuaternion orientation = btQuaternion(0, 0, 0, 1), btScalar friction = 0.5f, std::string tag_ = "");
 };
