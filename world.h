@@ -47,6 +47,7 @@ struct world
     void addObject(physObj*);
     void addConstraint(btTypedConstraint*);
     void render();
+    physObj *findObj(btRigidBody *body);
     void removeBody(btRigidBody *body);
     world();
     ~world();

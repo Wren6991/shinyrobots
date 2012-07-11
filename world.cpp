@@ -48,6 +48,17 @@ void world::render()
         (*iter)->render();
 }
 
+physObj *world::findObj(btRigidBody *body)
+{
+    std::vector<physObj*>::iterator iter;
+    for (iter = objects.begin(); iter != objects.end(); iter++)
+    {
+        if ((*iter)->body == body)
+            return *iter;
+    }
+    return 0;
+}
+
 void world::removeBody(btRigidBody *body)
 {
     std::vector<btTypedConstraint*>::iterator iter;

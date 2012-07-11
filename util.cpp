@@ -88,7 +88,7 @@ physObj* staticFromJson(Json::Value obj, std::string currentpath, btTransform tr
         mesh = new btBvhTriangleMeshShape(collisionMeshFromFile(ss.str()), true);
     }
 
-    return new physObj(0, jsonVector(obj["position"]), mesh, mdl, jsonQuaternion(obj["orientation"]));
+    return new physObj(0, jsonVector(obj["position"]), mesh, mdl, jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f), obj["tag"].asString());
 }
 
 physObj* dynamicFromJson(Json::Value obj, std::string currentpath, btTransform transform)
@@ -125,7 +125,7 @@ physObj* dynamicFromJson(Json::Value obj, std::string currentpath, btTransform t
         }
     }
 
-    return new physObj(obj["mass"].asDouble(), transform * jsonVector(obj["position"]), shape, mdl, transform * jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f));
+    return new physObj(obj["mass"].asDouble(), transform * jsonVector(obj["position"]), shape, mdl, transform * jsonQuaternion(obj["orientation"]), jsonScalar(obj["friction"], 0.5f), obj["tag"].asString());
 }
 
 btTypedConstraint* constraintFromJson(Json::Value obj, world *gWorld)
